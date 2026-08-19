@@ -94,7 +94,7 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `MODEL` | `"deepseek-v4-pro"` | 计价模型：`deepseek-v4-pro` 或 `deepseek-v4-flash` |
+| `DEFAULT_MODEL` | `"deepseek-v4-pro"` | 兜底计价模型（仅在无法获知当前模型时使用，见下方「模型自动跟随」） |
 | `CNY_PER_USD` | `7.2` | USD→CNY 汇率（官方价目为美元，余额为人民币） |
 | `REFRESH_MS` | `60000` | 余额自动刷新间隔（毫秒） |
 
@@ -117,11 +117,24 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 - 数据来源：会话 `tokenUsage` 投影（全日志累计，压缩后仍保持）
 - 价格来源：[DeepSeek 官方价目页](https://api-docs.deepseek.com/quick_start/pricing)，官方调价后请手动更新 `PRICES` 表
 
+### 模型自动跟随
+
+计价模型**自动跟随当前选择的模型**，无需手动改代码。解析顺序：
+
+1. **模型选择器当前选中的模型**（经 `ctx.modelDirectories` 共享目录读取）——切换模型后徽章**立即**按新模型价格重算，不用等下一轮对话
+2. **最近一轮 assistant 消息实际使用的模型**（节点 `provenance`/`requestConfig`）——当前选中值尚未加载时使用
+3. **`DEFAULT_MODEL` 兜底**——以上都拿不到时使用
+
+- 当前模型在 `PRICES` 表内（`deepseek-v4-pro` / `deepseek-v4-flash`）→ 正常估算
+- 当前模型不在表内（如切到其他厂商模型）→ 显示 `本会话 · <模型名> 无价目`，不显示金额；把该模型价格加进 `PRICES` 表即可启用
+- 悬停 tooltip 会显示实际参与计价的模型名
+
 ### 已知限制（估算口径）
 
-1. 金额是**估算值**：汇率、峰谷时段、模型选择均为本地配置，可能与实际账单有细微出入
-2. **子代理（subagent）会话**的用量记在各自的会话里，不计入父会话的「本会话」金额
-3. 余额接口按官方返回展示（含赠送额度），与扣费明细可能有分钟级延迟
+1. 金额是**估算值**：汇率、峰谷时段为本地配置，可能与实际账单有细微出入
+2. 会话中途切换模型时，历史 token 统一按**当前模型**价格计价（token 投影不带模型维度，无法分模型拆账）
+3. **子代理（subagent）会话**的用量记在各自的会话里，不计入父会话的「本会话」金额
+4. 余额接口按官方返回展示（含赠送额度），与扣费明细可能有分钟级延迟
 
 ---
 
@@ -133,7 +146,8 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
         ├──(2) fetch('/deepseek-api-money/status') ──────────► Host
         │        Host: credentials 取 key ─► curl 官方余额接口（30s 缓存）
         │◄─────────────── JSON {kind:"ok", total, ...} ───────┤
-        └──(3) useProjection("tokenUsage") 取会话 token ─► 本地计价 ─► 渲染
+        └──(3) 当前模型（modelDirectories/节点 provenance） + useProjection("tokenUsage")
+               ─► 本地计价 ─► 渲染（切换模型立即重算）
 ```
 
 - 采用 DSH 官方**双面包持久化插件**机制（`dsh.client` 声明 + `window.__ModuleLoader__` bundle），与产品自带 UI 插件同架构，随 dsh 启动自动挂载，任何会话都生效
@@ -171,4 +185,5 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 
 - v1（动态插件 `dsmon-1/pkg-1`）：会话级临时插件，进程重启即消失
 - v1 持久化（包名 `dsh-money`）：位于 `~/.dsh/profiles/web/packages/dsh-money`，已废弃删除
-- v1 重命名（当前）：包名改为 `deepseek-api-money`，源码迁移至本文件夹，profile 以符号链接指向这里
+- v1 重命名：包名改为 `deepseek-api-money`，源码迁移至本文件夹，profile 以符号链接指向这里
+- v1.1（当前）：计价模型自动跟随当前选择的模型（`modelDirectories` → 节点 provenance → 兜底）
