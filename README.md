@@ -106,14 +106,16 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 
 价格表（美元 / 百万 token，**谷价**；峰价为谷价 ×2）：
 
-| 项目 | deepseek-v4-flash | deepseek-v4-pro |
-| --- | --- | --- |
-| 输入（缓存未命中） | $0.22 | $0.66 |
-| 输入（缓存命中） | $0.007 | $0.022 |
-| 输出 | $0.66 | $1.98 |
+| 项目 | deepseek-v4-flash | deepseek-v4-flash-vision-exp | deepseek-v4-pro |
+| --- | --- | --- | --- |
+| 输入（缓存未命中） | $0.22 | $0.22 | $0.66 |
+| 输入（缓存命中） | $0.007 | $0.007 | $0.022 |
+| 输出 | $0.66 | $0.66 | $1.98 |
+
+> **视觉模型**（`deepseek-v4-flash-vision-exp`，实验性）：价目与 v4-flash 完全一致。发送的图片会先按尺寸缩放（约 800×800 像素总量），换算为**输入 token** 与文字一起计费，**每张图上限 384 token**、每张独立计数（[Vision 文档](https://api-docs.deepseek.com/guides/vision)）。
 
 - **峰时**：UTC 01:00–04:00 与 06:00–10:00（其余为谷时，半价）
-- **花费公式**：`(未缓存输入 + 缓存写) × miss 价 + 缓存读 × hit 价 + 输出 × out 价`，再按峰谷时段乘系数，最后按 `CNY_PER_USD` 换算成人民币
+- **花费公式**：`(未缓存输入 + 缓存写) × miss 价 + 缓存读 × hit 价 + 输出 × out 价`，再按峰谷时段乘系数，最后按 `CNY_PER_USD` 换算成人民币（图片 token 已计入会话的输入 token 统计，无需额外计算）
 - 数据来源：会话 `tokenUsage` 投影（全日志累计，压缩后仍保持）
 - 价格来源：[DeepSeek 官方价目页](https://api-docs.deepseek.com/quick_start/pricing)，官方调价后请手动更新 `PRICES` 表
 
@@ -125,7 +127,7 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 2. **最近一轮 assistant 消息实际使用的模型**（节点 `provenance`/`requestConfig`）——当前选中值尚未加载时使用
 3. **`DEFAULT_MODEL` 兜底**——以上都拿不到时使用
 
-- 当前模型在 `PRICES` 表内（`deepseek-v4-pro` / `deepseek-v4-flash`）→ 正常估算
+- 当前模型在 `PRICES` 表内（`deepseek-v4-pro` / `deepseek-v4-flash` / `deepseek-v4-flash-vision-exp`）→ 正常估算（视觉模型按 flash 价目）
 - 当前模型不在表内（如切到其他厂商模型）→ 显示 `本会话 · <模型名> 无价目`，不显示金额；把该模型价格加进 `PRICES` 表即可启用
 - 悬停 tooltip 会显示实际参与计价的模型名
 
@@ -186,4 +188,5 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 - v1（动态插件 `dsmon-1/pkg-1`）：会话级临时插件，进程重启即消失
 - v1 持久化（包名 `dsh-money`）：位于 `~/.dsh/profiles/web/packages/dsh-money`，已废弃删除
 - v1 重命名：包名改为 `deepseek-api-money`，源码迁移至本文件夹，profile 以符号链接指向这里
-- v1.1（当前）：计价模型自动跟随当前选择的模型（`modelDirectories` → 节点 provenance → 兜底）
+- v1.1：计价模型自动跟随当前选择的模型（`modelDirectories` → 节点 provenance → 兜底）
+- v1.2（当前）：新增视觉模型 `deepseek-v4-flash-vision-exp` 价目（同 v4-flash，图片每张上限 384 token 计入输入）
