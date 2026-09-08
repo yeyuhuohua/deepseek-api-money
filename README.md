@@ -189,4 +189,5 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 - v1 持久化（包名 `dsh-money`）：位于 `~/.dsh/profiles/web/packages/dsh-money`，已废弃删除
 - v1 重命名：包名改为 `deepseek-api-money`，源码迁移至本文件夹，profile 以符号链接指向这里
 - v1.1：计价模型自动跟随当前选择的模型（`modelDirectories` → 节点 provenance → 兜底）
-- v1.2（当前）：新增视觉模型 `deepseek-v4-flash-vision-exp` 价目（同 v4-flash，图片每张上限 384 token 计入输入）
+- v1.2：新增视觉模型 `deepseek-v4-flash-vision-exp` 价目（同 v4-flash，图片每张上限 384 token 计入输入）
+- v1.2.1（当前）：适配 DSH 0.1.2+ 快照结构变化——聊天节点改经 `useChat` hook 读取（旧 `useSession().chat` 已废弃，会导致徽章渲染崩溃）
