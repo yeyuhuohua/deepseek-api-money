@@ -75,10 +75,10 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 
 | 交互 | 行为 |
 | --- | --- |
-| 自动 | 每 60 秒刷新一次余额 |
-| 点击徽章 | 立即刷新余额 |
-| 悬停徽章 | 显示详细 tooltip（充值/赠送、token 明细、美元估算、峰谷时段） |
-| 键盘 | 徽章可聚焦，按 Enter / 空格刷新 |
+| 自动 | 每 60 秒刷新一次余额（走宿主 30 秒缓存，避免触发官方限流） |
+| 点击徽章 | **强制刷新**：跳过宿主缓存，立即真查官方接口（显示「余额 刷新中…」作为反馈） |
+| 悬停徽章 | 显示详细 tooltip（充值/赠送、token 明细、美元估算、峰谷时段、最后更新时间） |
+| 键盘 | 徽章可聚焦，按 Enter / 空格强制刷新 |
 
 **显示内容解读**：
 
@@ -168,6 +168,8 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 | 页面里没有徽章 | 先确认刷新过页面；再看 `curl http://127.0.0.1:3080/ | grep deepseek-api-money` 是否在 boot 清单中 |
 | 双份徽章 | 之前跑过同名动态插件且未停止；重启 dsh 或 `cordis_stop` 对应动态插件 |
 | 余额明显不符 | 检查 `PRICES` 是否与[官方价目](https://api-docs.deepseek.com/quick_start/pricing)同步、`CNY_PER_USD` 汇率是否最新 |
+| 点击徽章感觉「没反应」 | 数值本来就可能没变化（余额变动很小）；本版起点击会显示「余额 刷新中…」并强制绕过缓存，tooltip 里有「最后更新」时间可确认 |
+| 点击完全没反应且不显示刷新中 | 说明点击被外层容器吞掉，把该现象反馈给维护者（需要调整挂载方式） |
 
 ---
 
@@ -190,4 +192,5 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 - v1 重命名：包名改为 `deepseek-api-money`，源码迁移至本文件夹，profile 以符号链接指向这里
 - v1.1：计价模型自动跟随当前选择的模型（`modelDirectories` → 节点 provenance → 兜底）
 - v1.2：新增视觉模型 `deepseek-v4-flash-vision-exp` 价目（同 v4-flash，图片每张上限 384 token 计入输入）
-- v1.2.1（当前）：适配 DSH 0.1.2+ 快照结构变化——聊天节点改经 `useChat` hook 读取（旧 `useSession().chat` 已废弃，会导致徽章渲染崩溃）
+- v1.2.1：适配 DSH 0.1.2+ 快照结构变化——聊天节点改经 `useChat` hook 读取（旧 `useSession().chat` 已废弃，会导致徽章渲染崩溃）
+- v1.2.2（当前）：手动点击改为**强制刷新**（`?force=1` 跳过宿主 30 秒缓存），点击时显示「余额 刷新中…」，tooltip 增加「最后更新」时间
