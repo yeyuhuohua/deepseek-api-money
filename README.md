@@ -127,12 +127,13 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 | `deepseek-v4-pro` | DeepSeek-V4-Pro-0813（官方继续提供服务） | Pro 价目 |
 
 - **峰时**：**北京时间**周一至周五（不含中国法定节假日）09:00–12:00、14:00–18:00
-- **谷时**：其余全部时间（**含周末与法定节假日全天**），价格为峰时的一半
+- **谷时**：其余全部时间（**含周末、调休上班的周末与法定节假日全天**），价格为峰时的一半
 - **视觉**：`deepseek-flash`（V4.1-Flash）原生支持图片。图片按尺寸换算成**输入 token** 与文字一起计费——小于约 544×544 的图片会被放大，更大的会缩放到约 1300×1300 等效像素，**每张上限 1024 token**、每张独立计算（[图像理解文档](https://api-docs.deepseek.com/zh-cn/guides/vision)）
 - **花费公式**：`(未缓存输入 + 缓存写) × miss 价 + 缓存读 × hit 价 + 输出 × out 价`，再乘峰谷系数；图片 token 已并入会话的输入统计，无需额外计算
 - **扣费顺序**：充值余额与赠送余额同时存在时，官方**优先扣减赠送余额**（tooltip 里两项都列出）
+- **调休上班的周末**：DeepSeek 平台公告明确「调休上班的周末、中国法定节假日全天均按空闲时段计费」，所以判定只看**周几 + 是否法定节假日**——调休要上班的周六/周日一样算谷时（tooltip 会标注「谷时（调休上班日）」，内置 2026 年调休表 `CN_MAKEUP_DAYS`）
 - 数据来源：会话 `tokenUsage` 投影（全日志累计，压缩后仍保持）
-- 价格来源：[模型 & 价格](https://api-docs.deepseek.com/zh-cn/quick_start/pricing)，官方调价后请手动更新 `PRICES`、`MODEL_ALIASES`、`CN_HOLIDAYS`
+- 价格来源：[模型 & 价格](https://api-docs.deepseek.com/zh-cn/quick_start/pricing)，官方调价后请手动更新 `PRICES`、`MODEL_ALIASES`、`CN_HOLIDAYS`、`CN_MAKEUP_DAYS`
 
 ### 模型自动跟随
 
@@ -151,7 +152,7 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 ### 已知限制（估算口径）
 
 1. 金额是**估算值**：峰谷时段、节假日为本地判定，可能与实际账单有细微出入
-2. 峰谷判定依赖内置的**中国法定节假日表**（`CN_HOLIDAYS`，当前为 2026 年）。跨年后若未更新，法定节假日当天会被按峰时**高估**（周末不受影响，仍然正确按谷时计算）；调休上班的周末按官方规则仍算谷时
+2. 峰谷判定依赖内置的**中国法定节假日表**（`CN_HOLIDAYS`）与**调休上班表**（`CN_MAKEUP_DAYS`，当前均为 2026 年）。跨年后若未更新，法定节假日当天会被按峰时**高估**（周末不受影响，仍然正确按谷时计算）
 3. 会话中途切换模型时，历史 token 统一按**当前模型**价格计价（token 投影不带模型维度，无法分模型拆账）
 4. **子代理（subagent）会话**的用量记在各自的会话里，不计入父会话的「本会话」金额
 5. 余额接口按官方返回展示（含赠送额度），与扣费明细可能有分钟级延迟
@@ -214,6 +215,7 @@ ln -sfn /你的路径/deepseek-api-money ~/.dsh/profiles/node_modules/deepseek-a
 | `PRICES` | 官方调整单价（照抄[官方价目](https://api-docs.deepseek.com/zh-cn/quick_start/pricing)的**人民币**列） |
 | `MODEL_ALIASES` | 官方下线某个模型、给出兼容路由时（旧名 → 现役模型 id） |
 | `CN_HOLIDAYS` | 每年国务院公布次年放假安排后（[中国政府网](https://www.gov.cn/)） |
+| `CN_MAKEUP_DAYS` | 同上（放假日程里的「调休上班」日期，只为 tooltip 标注更准确，不影响金额） |
 
 本地自测脚本放在工作区 `.debug/`（已 gitignore，不入库）：
 
@@ -233,10 +235,11 @@ node .debug/test-render.mjs    # 徽章渲染与 tooltip（含 DSH 0.1.2+ 快照
 - v1.2：新增视觉模型 `deepseek-v4-flash-vision-exp` 价目（同 v4-flash，图片每张上限 384 token 计入输入）
 - v1.2.1：适配 DSH 0.1.2+ 快照结构变化——聊天节点改经 `useChat` hook 读取（旧 `useSession().chat` 已废弃，会导致徽章渲染崩溃）
 - v1.2.2：手动点击改为**强制刷新**（`?force=1` 跳过宿主 30 秒缓存），点击时显示「余额 刷新中…」，tooltip 增加「最后更新」时间
-- v1.3.0（当前）：同步 **2026-09-10 官方新价目**
+- v1.3.0：同步 **2026-09-10 官方新价目**
   - 价目改用官方**人民币**列：`deepseek-flash`（= V4.1-Flash，原生多模态）¥1 / ¥0.02 / ¥4，`deepseek-v4-pro` ¥4.5 / ¥0.15 / ¥13.5（计费不变）
   - 下线模型走 `MODEL_ALIASES`：`deepseek-v4-flash`、`deepseek-v4-flash-vision-exp` 与内部 beta 名按 Flash 价目计费，tooltip 注明「已由 deepseek-flash 承接」
   - 峰谷规则改为以**北京时间**判定：周一至周五（不含中国法定节假日）09:00–12:00、14:00–18:00 为峰时，其余（含周末、法定节假日全天）为谷时；内置 2026 年法定节假日表
   - 表外的 DeepSeek 新模型 / beta id 按名称推定价目；**其他厂商模型不再误用 DeepSeek 价格**（显示「无价目」）
   - 视觉模型图片计费口径更新：每张图上限 384 → **1024 token**，缩放目标约 1300×1300 等效像素
   - 新增本地自测脚本（价目 / 峰谷 / 渲染，共 96 项断言）
+- v1.3.1（当前）：按 DeepSeek 平台公告细化峰谷判定——「**调休上班的周末**、中国法定节假日全天均按空闲时段计费」，新增 2026 年调休上班表 `CN_MAKEUP_DAYS`，tooltip 对调休日标注「谷时（调休上班日）」；自测增至 **110 项断言**
